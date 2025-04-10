@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 const PersonManager: React.FC = () => {
   const [people, setPeople] = useState<Person[]>([]);
-  const [importMode, setImportMode] = useState<"form" | "bulk">("form");
+  const [importMode, setImportMode] = useState<"form" | "bulk">("bulk");
 
   // Carregar dados salvos ao iniciar
   useEffect(() => {
@@ -44,27 +44,34 @@ const PersonManager: React.FC = () => {
     toast.info("Registro removido");
   };
 
+  const handleClearAll = () => {
+    if (window.confirm("Deseja realmente limpar todos os dados?")) {
+      setPeople([]);
+      toast.info("Todos os registros foram removidos");
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Gerenciamento de Pessoas</CardTitle>
+        <CardTitle>Identificador de Duplicatas</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="mb-6">
           <div className="flex gap-4 mb-4">
             <Button 
-              variant={importMode === "form" ? "default" : "outline"} 
-              onClick={() => setImportMode("form")}
-              className="flex-1"
-            >
-              Formulário
-            </Button>
-            <Button 
               variant={importMode === "bulk" ? "default" : "outline"} 
               onClick={() => setImportMode("bulk")}
               className="flex-1"
             >
-              Importação em Lote
+              Colar Dados
+            </Button>
+            <Button 
+              variant={importMode === "form" ? "default" : "outline"} 
+              onClick={() => setImportMode("form")}
+              className="flex-1"
+            >
+              Formulário Manual
             </Button>
           </div>
           
@@ -76,7 +83,13 @@ const PersonManager: React.FC = () => {
         </div>
         
         <PeopleTable people={people} onDeletePerson={handleDeletePerson} />
-        <div className="mt-4 flex justify-end">
+        
+        <div className="mt-4 flex justify-between">
+          {people.length > 0 && (
+            <Button variant="destructive" onClick={handleClearAll}>
+              Limpar Todos
+            </Button>
+          )}
           <ExportOptions people={people} />
         </div>
       </CardContent>

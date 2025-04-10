@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Person } from "@/types/Person";
 import { toast } from "sonner";
+import { Clipboard } from "lucide-react";
 
 interface BulkImportProps {
   onImport: (people: Person[]) => void;
@@ -22,16 +23,60 @@ const BulkImport: React.FC<BulkImportProps> = ({ onImport }) => {
       // Dividir o texto por linhas e processar cada linha
       const lines = rawData.trim().split("\n");
       const importedPeople: Person[] = [];
+      const errors: string[] = [];
       
       // Processar cada linha
-      for (const line of lines) {
-        if (!line.trim()) continue;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
         
-        // Dividir a linha em partes - assumindo formato: Nome, Data, Documento
-        const parts = line.split(",").map(part => part.trim());
+        // Diferentes possíveis delimitadores
+        let parts: string[] = [];
+        
+        // Tenta com vírgula
+        if (line.includes(",")) {
+          parts = line.split(",").map(part => part.trim());
+        } 
+        // Tenta com ponto e vírgula
+        else if (line.includes(";")) {
+          parts = line.split(";").map(part => part.trim());
+        }
+        // Tenta com tabulação
+        else if (line.includes("\t")) {
+          parts = line.split("\t").map(part => part.trim());
+        }
+        // Se não encontrou delimitadores claros, tenta dividir por espaços (mais arriscado)
+        else {
+          // Assume que o último grupo de números é o documento e o penúltimo pode ser uma data
+          const words = line.split(/\s+/);
+          if (words.length >= 3) {
+            // Verifica se o que parece ser data está no formato de data
+            const potentialDoc = words.pop() || "";
+            let potentialDate = "";
+            let potentialName = "";
+            
+            // Verifica padrões comuns de data
+            const datePattern = /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})|(\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})/;
+            const dateMatch = line.match(datePattern);
+            
+            if (dateMatch) {
+              potentialDate = dateMatch[0];
+              // Remove a data da linha para extrair o nome
+              const nameParts = line.replace(potentialDoc, "").replace(potentialDate, "").trim().split(/\s+/);
+              potentialName = nameParts.join(" ");
+            } else {
+              // Se não encontrou padrão de data, assume que os dois últimos são data e documento
+              const datePart = words.pop() || "";
+              potentialDate = datePart;
+              potentialName = words.join(" ");
+            }
+            
+            parts = [potentialName, potentialDate, potentialDoc];
+          }
+        }
         
         if (parts.length < 3) {
-          toast.warning(`Linha ignorada por formato inválido: ${line}`);
+          errors.push(`Linha ${i + 1} (${line}) - formato inválido`);
           continue;
         }
         
@@ -44,6 +89,11 @@ const BulkImport: React.FC<BulkImportProps> = ({ onImport }) => {
         };
         
         importedPeople.push(person);
+      }
+      
+      if (errors.length > 0) {
+        toast.warning(`${errors.length} linhas com problemas. Verifique o formato dos dados.`);
+        console.error("Linhas com problemas:", errors);
       }
       
       if (importedPeople.length === 0) {
@@ -77,6 +127,11 @@ const BulkImport: React.FC<BulkImportProps> = ({ onImport }) => {
         const [day, month, year] = dateStr.split('-').map(Number);
         date = new Date(year, month - 1, day);
       }
+      // Verifica se é no formato DD.MM.YYYY
+      else if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(dateStr)) {
+        const [day, month, year] = dateStr.split('.').map(Number);
+        date = new Date(year, month - 1, day);
+      }
       // Assume formato MM/DD/YYYY ou YYYY-MM-DD (compatível com HTML input date)
       else {
         date = new Date(dateStr);
@@ -97,18 +152,25 @@ const BulkImport: React.FC<BulkImportProps> = ({ onImport }) => {
 
   return (
     <div className="space-y-4 mb-6 border p-4 rounded-md">
-      <h3 className="text-lg font-medium">Importação em Lote</h3>
+      <div className="flex items-center gap-2 mb-2">
+        <Clipboard className="text-muted-foreground" size={18} />
+        <h3 className="text-lg font-medium">Cole seus dados abaixo</h3>
+      </div>
+      
       <p className="text-sm text-muted-foreground">
-        Cole sua lista de pessoas no formato: Nome, Data de Nascimento, Documento (uma pessoa por linha)
+        Cole diretamente de documentos, planilhas ou listas. O sistema tentará identificar: 
+        <span className="font-medium block mt-1">Nome Completo, Data de Nascimento, Número do Documento</span>
       </p>
+      
       <Textarea
         value={rawData}
         onChange={(e) => setRawData(e.target.value)}
-        placeholder="João Silva, 10/05/1985, 123.456.789-00&#10;Maria Souza, 22/07/1990, 987.654.321-00"
-        className="min-h-[150px]"
+        placeholder="João Silva, 10/05/1985, 123.456.789-00&#10;Maria Souza, 22/07/1990, 987.654.321-00&#10;..."
+        className="min-h-[200px] font-mono text-sm"
       />
+      
       <Button onClick={handleImport} className="w-full">
-        Importar Dados
+        Identificar Duplicatas
       </Button>
     </div>
   );
