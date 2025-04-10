@@ -51,6 +51,62 @@ const PersonManager: React.FC = () => {
     }
   };
 
+  const handleRemoveDuplicates = () => {
+    if (people.length === 0) return;
+    
+    if (window.confirm("Deseja remover as entradas duplicadas, mantendo apenas a última de cada?")) {
+      // Identificar duplicatas
+      const nameMap = new Map<string, Person[]>();
+      const birthDateMap = new Map<string, Person[]>();
+      const documentMap = new Map<string, Person[]>();
+      
+      // Agrupar entradas por nome, data e documento
+      people.forEach((person) => {
+        const normalizedName = person.name.toLowerCase().trim().replace(/\s+/g, ' ');
+        const normalizedDoc = person.documentNumber.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+        
+        if (!nameMap.has(normalizedName)) nameMap.set(normalizedName, []);
+        if (!birthDateMap.has(person.birthDate)) birthDateMap.set(person.birthDate, []);
+        if (!documentMap.has(normalizedDoc)) documentMap.set(normalizedDoc, []);
+        
+        nameMap.get(normalizedName)?.push(person);
+        birthDateMap.get(person.birthDate)?.push(person);
+        documentMap.get(normalizedDoc)?.push(person);
+      });
+      
+      // Identificar IDs a serem removidos (todos, exceto o último de cada grupo)
+      const idsToRemove = new Set<string>();
+      
+      // Para cada grupo com mais de uma entrada, marcar todos exceto o último para remoção
+      const processGroup = (group: Person[]) => {
+        if (group.length > 1) {
+          // Ordenar por ID (assumindo que IDs mais recentes são maiores)
+          group.sort((a, b) => a.id.localeCompare(b.id));
+          
+          // Marcar todos exceto o último para remoção
+          for (let i = 0; i < group.length - 1; i++) {
+            idsToRemove.add(group[i].id);
+          }
+        }
+      };
+      
+      // Processar cada grupo de duplicatas
+      nameMap.forEach(processGroup);
+      birthDateMap.forEach(processGroup);
+      documentMap.forEach(processGroup);
+      
+      // Filtrar pessoas, removendo as marcadas
+      const filteredPeople = people.filter(person => !idsToRemove.has(person.id));
+      
+      // Atualizar a lista
+      setPeople(filteredPeople);
+      
+      // Notificar o usuário
+      const removedCount = idsToRemove.size;
+      toast.success(`${removedCount} ${removedCount === 1 ? 'entrada duplicada foi removida' : 'entradas duplicadas foram removidas'}`);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -84,12 +140,19 @@ const PersonManager: React.FC = () => {
         
         <PeopleTable people={people} onDeletePerson={handleDeletePerson} />
         
-        <div className="mt-4 flex justify-between">
-          {people.length > 0 && (
-            <Button variant="destructive" onClick={handleClearAll}>
-              Limpar Todos
-            </Button>
-          )}
+        <div className="mt-4 flex justify-between flex-wrap gap-2">
+          <div className="flex gap-2">
+            {people.length > 0 && (
+              <>
+                <Button variant="destructive" onClick={handleClearAll}>
+                  Limpar Todos
+                </Button>
+                <Button variant="secondary" onClick={handleRemoveDuplicates}>
+                  Remover Duplicatas
+                </Button>
+              </>
+            )}
+          </div>
           <ExportOptions people={people} />
         </div>
       </CardContent>

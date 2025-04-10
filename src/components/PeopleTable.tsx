@@ -13,25 +13,29 @@ interface PeopleTableProps {
 const PeopleTable: React.FC<PeopleTableProps> = ({ people, onDeletePerson }) => {
   // Identificar duplicatas
   const { duplicateMap, summaryStats } = useMemo(() => {
-    const nameMap = new Map<string, number>();
-    const birthDateMap = new Map<string, number>();
-    const documentMap = new Map<string, number>();
+    const nameMap = new Map<string, Person[]>();
+    const birthDateMap = new Map<string, string[]>();
+    const documentMap = new Map<string, string[]>();
     
-    // Contagem de ocorrências
+    // Agrupar por valores normalizados
     people.forEach((person) => {
       // Normalizar strings para comparação (remover espaços extras, converter para minúsculas)
       const normalizedName = person.name.toLowerCase().trim().replace(/\s+/g, ' ');
       const normalizedDoc = person.documentNumber.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
       
-      nameMap.set(normalizedName, (nameMap.get(normalizedName) || 0) + 1);
-      birthDateMap.set(person.birthDate, (birthDateMap.get(person.birthDate) || 0) + 1);
-      documentMap.set(normalizedDoc, (documentMap.get(normalizedDoc) || 0) + 1);
+      if (!nameMap.has(normalizedName)) nameMap.set(normalizedName, []);
+      if (!birthDateMap.has(person.birthDate)) birthDateMap.set(person.birthDate, []);
+      if (!documentMap.has(normalizedDoc)) documentMap.set(normalizedDoc, []);
+      
+      nameMap.get(normalizedName)?.push(person);
+      birthDateMap.get(person.birthDate)?.push(person.id);
+      documentMap.get(normalizedDoc)?.push(person.id);
     });
     
     // Estatísticas de duplicatas
-    const duplicateNames = Array.from(nameMap.entries()).filter(([_, count]) => count > 1).length;
-    const duplicateDates = Array.from(birthDateMap.entries()).filter(([_, count]) => count > 1).length;
-    const duplicateDocs = Array.from(documentMap.entries()).filter(([_, count]) => count > 1).length;
+    const duplicateNames = Array.from(nameMap.entries()).filter(([_, group]) => group.length > 1).length;
+    const duplicateDates = Array.from(birthDateMap.entries()).filter(([_, ids]) => ids.length > 1).length;
+    const duplicateDocs = Array.from(documentMap.entries()).filter(([_, ids]) => ids.length > 1).length;
     
     return { 
       duplicateMap: { nameMap, birthDateMap, documentMap },
@@ -42,12 +46,12 @@ const PeopleTable: React.FC<PeopleTableProps> = ({ people, onDeletePerson }) => 
   const isDuplicate = {
     name: (name: string) => {
       const normalizedName = name.toLowerCase().trim().replace(/\s+/g, ' ');
-      return (duplicateMap.nameMap.get(normalizedName) || 0) > 1;
+      return (duplicateMap.nameMap.get(normalizedName)?.length || 0) > 1;
     },
-    birthDate: (date: string) => (duplicateMap.birthDateMap.get(date) || 0) > 1,
+    birthDate: (date: string) => (duplicateMap.birthDateMap.get(date)?.length || 0) > 1,
     document: (doc: string) => {
       const normalizedDoc = doc.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
-      return (duplicateMap.documentMap.get(normalizedDoc) || 0) > 1;
+      return (duplicateMap.documentMap.get(normalizedDoc)?.length || 0) > 1;
     },
   };
   

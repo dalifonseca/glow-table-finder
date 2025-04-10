@@ -13,6 +13,7 @@ const Index = () => {
           <p>Células destacadas em amarelo indicam informações duplicadas.</p>
           <p className="mt-2">Cole dados diretamente de outros documentos (uma entrada por linha) no formato:</p>
           <p className="mt-1 font-medium">Nome Completo, Data de Nascimento, Número do Documento</p>
+          <p className="mt-2">Use o botão "Remover Duplicatas" para manter apenas a última ocorrência de cada informação duplicada.</p>
         </div>
       </div>
     </div>
