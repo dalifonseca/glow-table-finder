@@ -11,6 +11,7 @@ const Index = () => {
         
         <div className="mt-8 text-center text-sm text-muted-foreground">
           <p>Células destacadas em amarelo indicam informações duplicadas.</p>
+          <p className="mt-2">Você pode importar dados colando uma lista em formato "Nome, Data, Documento" (uma entrada por linha).</p>
           <p className="mt-2">Use o botão Exportar para baixar os dados em diferentes formatos.</p>
         </div>
       </div>
