@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { 
   DropdownMenu, 
@@ -20,10 +20,9 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({ people }) => {
   const convertToCSV = (people: Person[]) => {
     if (people.length === 0) return "";
     
-    const headers = ["Nome", "Data de Nascimento", "Número do Documento"];
+    const headers = ["Nome", "Número de Matrícula", "Curso", "Série", "Data e Hora"];
     const rows = people.map(person => {
-      const date = new Date(person.birthDate).toLocaleDateString("pt-BR");
-      return [person.name, date, person.documentNumber];
+      return [person.name, person.enrollmentNumber, person.course, person.grade, person.dateTime];
     });
     
     return [
@@ -49,7 +48,7 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({ people }) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", "pessoas.csv");
+    link.setAttribute("download", "registros.csv");
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -69,7 +68,7 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({ people }) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", "pessoas.json");
+    link.setAttribute("download", "registros.json");
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -84,10 +83,9 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({ people }) => {
       return;
     }
     
-    const headers = ["Nome", "Data de Nascimento", "Número do Documento"];
+    const headers = ["Nome", "Número de Matrícula", "Curso", "Série", "Data e Hora"];
     const rows = people.map(person => {
-      const date = new Date(person.birthDate).toLocaleDateString("pt-BR");
-      return `${person.name}\t${date}\t${person.documentNumber}`;
+      return `${person.name}\t${person.enrollmentNumber}\t${person.course}\t${person.grade}\t${person.dateTime}`;
     });
     
     const text = [
@@ -99,7 +97,7 @@ const ExportOptions: React.FC<ExportOptionsProps> = ({ people }) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", "pessoas.txt");
+    link.setAttribute("download", "registros.txt");
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
