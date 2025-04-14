@@ -57,21 +57,29 @@ const PersonManager: React.FC = () => {
     if (window.confirm("Deseja remover as entradas duplicadas, mantendo apenas a última de cada?")) {
       // Identificar duplicatas
       const nameMap = new Map<string, Person[]>();
-      const birthDateMap = new Map<string, Person[]>();
-      const documentMap = new Map<string, Person[]>();
+      const enrollmentMap = new Map<string, Person[]>();
+      const courseMap = new Map<string, Person[]>();
+      const gradeMap = new Map<string, Person[]>();
+      const dateTimeMap = new Map<string, Person[]>();
       
-      // Agrupar entradas por nome, data e documento
+      // Agrupar entradas por campos
       people.forEach((person) => {
         const normalizedName = person.name.toLowerCase().trim().replace(/\s+/g, ' ');
-        const normalizedDoc = person.documentNumber.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+        const normalizedEnrollment = person.enrollmentNumber.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+        const normalizedCourse = person.course.toLowerCase().trim().replace(/\s+/g, ' ');
+        const normalizedGrade = person.grade.toLowerCase().trim().replace(/\s+/g, ' ');
         
         if (!nameMap.has(normalizedName)) nameMap.set(normalizedName, []);
-        if (!birthDateMap.has(person.birthDate)) birthDateMap.set(person.birthDate, []);
-        if (!documentMap.has(normalizedDoc)) documentMap.set(normalizedDoc, []);
+        if (!enrollmentMap.has(normalizedEnrollment)) enrollmentMap.set(normalizedEnrollment, []);
+        if (!courseMap.has(normalizedCourse)) courseMap.set(normalizedCourse, []);
+        if (!gradeMap.has(normalizedGrade)) gradeMap.set(normalizedGrade, []);
+        if (!dateTimeMap.has(person.dateTime)) dateTimeMap.set(person.dateTime, []);
         
         nameMap.get(normalizedName)?.push(person);
-        birthDateMap.get(person.birthDate)?.push(person);
-        documentMap.get(normalizedDoc)?.push(person);
+        enrollmentMap.get(normalizedEnrollment)?.push(person);
+        courseMap.get(normalizedCourse)?.push(person);
+        gradeMap.get(normalizedGrade)?.push(person);
+        dateTimeMap.get(person.dateTime)?.push(person);
       });
       
       // Identificar IDs a serem removidos (todos, exceto o último de cada grupo)
@@ -92,8 +100,10 @@ const PersonManager: React.FC = () => {
       
       // Processar cada grupo de duplicatas
       nameMap.forEach(processGroup);
-      birthDateMap.forEach(processGroup);
-      documentMap.forEach(processGroup);
+      enrollmentMap.forEach(processGroup);
+      courseMap.forEach(processGroup);
+      gradeMap.forEach(processGroup);
+      dateTimeMap.forEach(processGroup);
       
       // Filtrar pessoas, removendo as marcadas
       const filteredPeople = people.filter(person => !idsToRemove.has(person.id));

@@ -12,13 +12,15 @@ interface PersonFormProps {
 
 const PersonForm: React.FC<PersonFormProps> = ({ onAddPerson }) => {
   const [name, setName] = useState("");
-  const [birthDate, setBirthDate] = useState("");
-  const [documentNumber, setDocumentNumber] = useState("");
+  const [enrollmentNumber, setEnrollmentNumber] = useState("");
+  const [course, setCourse] = useState("");
+  const [grade, setGrade] = useState("");
+  const [dateTime, setDateTime] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name || !birthDate || !documentNumber) {
+    if (!name || !enrollmentNumber || !course || !grade || !dateTime) {
       toast.error("Por favor, preencha todos os campos");
       return;
     }
@@ -26,25 +28,29 @@ const PersonForm: React.FC<PersonFormProps> = ({ onAddPerson }) => {
     const newPerson: Person = {
       id: crypto.randomUUID(),
       name,
-      birthDate,
-      documentNumber,
+      enrollmentNumber,
+      course,
+      grade,
+      dateTime,
     };
     
     onAddPerson(newPerson);
     
     // Reset form
     setName("");
-    setBirthDate("");
-    setDocumentNumber("");
+    setEnrollmentNumber("");
+    setCourse("");
+    setGrade("");
+    setDateTime("");
     
-    toast.success("Pessoa adicionada com sucesso!");
+    toast.success("Registro adicionado com sucesso!");
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 mb-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Nome</Label>
+          <Label htmlFor="name">Nome Completo</Label>
           <Input
             id="name"
             value={name}
@@ -54,28 +60,48 @@ const PersonForm: React.FC<PersonFormProps> = ({ onAddPerson }) => {
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="birthDate">Data de Nascimento</Label>
+          <Label htmlFor="enrollmentNumber">Número de Matrícula</Label>
           <Input
-            id="birthDate"
-            type="date"
-            value={birthDate}
-            onChange={(e) => setBirthDate(e.target.value)}
+            id="enrollmentNumber"
+            value={enrollmentNumber}
+            onChange={(e) => setEnrollmentNumber(e.target.value)}
+            placeholder="Digite o número de matrícula"
           />
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="documentNumber">Número do Documento</Label>
+          <Label htmlFor="course">Curso</Label>
           <Input
-            id="documentNumber"
-            value={documentNumber}
-            onChange={(e) => setDocumentNumber(e.target.value)}
-            placeholder="CPF/RG"
+            id="course"
+            value={course}
+            onChange={(e) => setCourse(e.target.value)}
+            placeholder="Digite o curso"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="grade">Série</Label>
+          <Input
+            id="grade"
+            value={grade}
+            onChange={(e) => setGrade(e.target.value)}
+            placeholder="Digite a série"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="dateTime">Data e Hora</Label>
+          <Input
+            id="dateTime"
+            type="datetime-local"
+            value={dateTime}
+            onChange={(e) => setDateTime(e.target.value)}
           />
         </div>
       </div>
       
       <Button type="submit" className="w-full md:w-auto">
-        Adicionar Pessoa
+        Adicionar Registro
       </Button>
     </form>
   );

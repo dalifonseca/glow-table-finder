@@ -47,45 +47,76 @@ const BulkImport: React.FC<BulkImportProps> = ({ onImport }) => {
         }
         // Se não encontrou delimitadores claros, tenta dividir por espaços (mais arriscado)
         else {
-          // Assume que o último grupo de números é o documento e o penúltimo pode ser uma data
+          // Divide a linha em partes para extrair os componentes
           const words = line.split(/\s+/);
-          if (words.length >= 3) {
-            // Verifica se o que parece ser data está no formato de data
-            const potentialDoc = words.pop() || "";
-            let potentialDate = "";
+          if (words.length >= 5) {
+            // Tenta identificar os componentes com base no padrão
+            // Assume: DateTime, Nome, Matrícula, Curso, Série
+            const potentialDateTime = words.slice(0, 2).join(" "); // Assume data e hora nos primeiros tokens
+            
+            // Procura por padrões de matrícula (geralmente números)
+            const enrollmentPattern = /\b\d+\b/;
+            const enrollmentMatch = line.match(enrollmentPattern);
+            
+            let potentialEnrollment = "";
             let potentialName = "";
+            let potentialCourse = "";
+            let potentialGrade = "";
             
-            // Verifica padrões comuns de data
-            const datePattern = /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})|(\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})/;
-            const dateMatch = line.match(datePattern);
-            
-            if (dateMatch) {
-              potentialDate = dateMatch[0];
-              // Remove a data da linha para extrair o nome
-              const nameParts = line.replace(potentialDoc, "").replace(potentialDate, "").trim().split(/\s+/);
-              potentialName = nameParts.join(" ");
+            if (enrollmentMatch) {
+              potentialEnrollment = enrollmentMatch[0];
+              
+              // Divide o resto em partes para identificar nome, curso e série
+              const remainingText = line.replace(potentialDateTime, "").replace(potentialEnrollment, "").trim();
+              const remainingParts = remainingText.split(/\s{2,}|\t/); // Divide por 2+ espaços ou tab
+              
+              if (remainingParts.length >= 3) {
+                potentialName = remainingParts[0].trim();
+                potentialCourse = remainingParts[1].trim();
+                potentialGrade = remainingParts[2].trim();
+              } else {
+                // Tentativa alternativa de divisão
+                const halfPoint = Math.floor(remainingText.length / 2);
+                potentialName = remainingText.substring(0, halfPoint).trim();
+                const courseGradePart = remainingText.substring(halfPoint).trim();
+                
+                // Divide a parte de curso/série
+                const cgParts = courseGradePart.split(/\s{2,}|\t/);
+                if (cgParts.length >= 2) {
+                  potentialCourse = cgParts[0].trim();
+                  potentialGrade = cgParts[1].trim();
+                } else {
+                  // Última tentativa - divide pela metade
+                  const cgHalfPoint = Math.floor(courseGradePart.length / 2);
+                  potentialCourse = courseGradePart.substring(0, cgHalfPoint).trim();
+                  potentialGrade = courseGradePart.substring(cgHalfPoint).trim();
+                }
+              }
             } else {
-              // Se não encontrou padrão de data, assume que os dois últimos são data e documento
-              const datePart = words.pop() || "";
-              potentialDate = datePart;
-              potentialName = words.join(" ");
+              // Se não encontrou matrícula clara, faz uma divisão aproximada
+              potentialName = words.slice(2, 4).join(" "); // Assume nome nos próximos 2-3 tokens
+              potentialEnrollment = words.slice(4, 5).join(" "); // Próximo token como matrícula
+              potentialCourse = words.slice(5, 6).join(" "); // Próximo como curso
+              potentialGrade = words.slice(6).join(" "); // Resto como série
             }
             
-            parts = [potentialName, potentialDate, potentialDoc];
+            parts = [potentialDateTime, potentialName, potentialEnrollment, potentialCourse, potentialGrade];
           }
         }
         
-        if (parts.length < 3) {
+        if (parts.length < 5) {
           errors.push(`Linha ${i + 1} (${line}) - formato inválido`);
           continue;
         }
         
-        // Criar nova pessoa
+        // Criar novo registro
         const person: Person = {
           id: crypto.randomUUID(),
-          name: parts[0],
-          birthDate: formatDate(parts[1]),
-          documentNumber: parts[2],
+          dateTime: formatDateTime(parts[0]),
+          name: parts[1],
+          enrollmentNumber: parts[2],
+          course: parts[3],
+          grade: parts[4],
         };
         
         importedPeople.push(person);
@@ -103,7 +134,7 @@ const BulkImport: React.FC<BulkImportProps> = ({ onImport }) => {
       
       onImport(importedPeople);
       setRawData("");
-      toast.success(`${importedPeople.length} pessoas importadas com sucesso!`);
+      toast.success(`${importedPeople.length} registros importados com sucesso!`);
       
     } catch (error) {
       console.error("Erro ao processar dados:", error);
@@ -111,42 +142,45 @@ const BulkImport: React.FC<BulkImportProps> = ({ onImport }) => {
     }
   };
   
-  // Função para formatar data em formato reconhecido pelo input type="date"
-  const formatDate = (dateStr: string): string => {
+  // Função para formatar data e hora
+  const formatDateTime = (dateTimeStr: string): string => {
     try {
-      // Tenta diferentes formatos de data comuns
-      let date: Date;
+      // Se já estiver no formato correto, retorna
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dateTimeStr)) {
+        return dateTimeStr;
+      }
       
-      // Verifica se é no formato DD/MM/YYYY
-      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {
-        const [day, month, year] = dateStr.split('/').map(Number);
-        date = new Date(year, month - 1, day);
-      } 
-      // Verifica se é no formato DD-MM-YYYY
-      else if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(dateStr)) {
-        const [day, month, year] = dateStr.split('-').map(Number);
-        date = new Date(year, month - 1, day);
+      // Verifica diferentes formatos comuns de data e hora
+      let dateTime: Date | null = null;
+      
+      // Formato DD/MM/YYYY HH:MM
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}\s\d{1,2}:\d{1,2}$/.test(dateTimeStr)) {
+        const parts = dateTimeStr.split(' ');
+        const dateParts = parts[0].split('/').map(Number);
+        const timeParts = parts[1].split(':').map(Number);
+        dateTime = new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1]);
       }
-      // Verifica se é no formato DD.MM.YYYY
-      else if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(dateStr)) {
-        const [day, month, year] = dateStr.split('.').map(Number);
-        date = new Date(year, month - 1, day);
+      // Formato DD-MM-YYYY HH:MM
+      else if (/^\d{1,2}-\d{1,2}-\d{4}\s\d{1,2}:\d{1,2}$/.test(dateTimeStr)) {
+        const parts = dateTimeStr.split(' ');
+        const dateParts = parts[0].split('-').map(Number);
+        const timeParts = parts[1].split(':').map(Number);
+        dateTime = new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1]);
       }
-      // Assume formato MM/DD/YYYY ou YYYY-MM-DD (compatível com HTML input date)
+      // Tenta fazer parse com Date padrão
       else {
-        date = new Date(dateStr);
+        dateTime = new Date(dateTimeStr);
       }
       
-      // Verifica se a data é válida
-      if (isNaN(date.getTime())) {
-        return dateStr; // Retorna original se inválida
+      // Verifica se é uma data válida
+      if (dateTime && !isNaN(dateTime.getTime())) {
+        return dateTime.toISOString().slice(0, 16); // Formato YYYY-MM-DDTHH:MM
       }
       
-      // Formata para YYYY-MM-DD (formato aceito pelo input type="date")
-      return date.toISOString().split('T')[0];
+      // Se não conseguiu converter, retorna o original
+      return dateTimeStr;
     } catch (e) {
-      // Em caso de erro, retorna a string original
-      return dateStr;
+      return dateTimeStr;
     }
   };
 
@@ -159,13 +193,13 @@ const BulkImport: React.FC<BulkImportProps> = ({ onImport }) => {
       
       <p className="text-sm text-muted-foreground">
         Cole diretamente de documentos, planilhas ou listas. O sistema tentará identificar: 
-        <span className="font-medium block mt-1">Nome Completo, Data de Nascimento, Número do Documento</span>
+        <span className="font-medium block mt-1">Data e Hora, Nome Completo, Número de Matrícula, Curso, Série</span>
       </p>
       
       <Textarea
         value={rawData}
         onChange={(e) => setRawData(e.target.value)}
-        placeholder="João Silva, 10/05/1985, 123.456.789-00&#10;Maria Souza, 22/07/1990, 987.654.321-00&#10;..."
+        placeholder="01/05/2025 14:30, João Silva, 123456, Engenharia, 5º período&#10;02/05/2025 09:15, Maria Santos, 654321, Medicina, 3º ano&#10;..."
         className="min-h-[200px] font-mono text-sm"
       />
       

@@ -2,6 +2,8 @@
 export interface Person {
   id: string;
   name: string;
-  birthDate: string;
-  documentNumber: string;
+  enrollmentNumber: string;
+  course: string;
+  grade: string;
+  dateTime: string;
 }

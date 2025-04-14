@@ -14,32 +14,48 @@ const PeopleTable: React.FC<PeopleTableProps> = ({ people, onDeletePerson }) => 
   // Identificar duplicatas
   const { duplicateMap, summaryStats } = useMemo(() => {
     const nameMap = new Map<string, Person[]>();
-    const birthDateMap = new Map<string, string[]>();
-    const documentMap = new Map<string, string[]>();
+    const enrollmentMap = new Map<string, string[]>();
+    const courseMap = new Map<string, Person[]>();
+    const gradeMap = new Map<string, Person[]>();
+    const dateTimeMap = new Map<string, string[]>();
     
     // Agrupar por valores normalizados
     people.forEach((person) => {
       // Normalizar strings para comparação (remover espaços extras, converter para minúsculas)
       const normalizedName = person.name.toLowerCase().trim().replace(/\s+/g, ' ');
-      const normalizedDoc = person.documentNumber.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+      const normalizedEnrollment = person.enrollmentNumber.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+      const normalizedCourse = person.course.toLowerCase().trim().replace(/\s+/g, ' ');
+      const normalizedGrade = person.grade.toLowerCase().trim().replace(/\s+/g, ' ');
       
       if (!nameMap.has(normalizedName)) nameMap.set(normalizedName, []);
-      if (!birthDateMap.has(person.birthDate)) birthDateMap.set(person.birthDate, []);
-      if (!documentMap.has(normalizedDoc)) documentMap.set(normalizedDoc, []);
+      if (!enrollmentMap.has(normalizedEnrollment)) enrollmentMap.set(normalizedEnrollment, []);
+      if (!courseMap.has(normalizedCourse)) courseMap.set(normalizedCourse, []);
+      if (!gradeMap.has(normalizedGrade)) gradeMap.set(normalizedGrade, []);
+      if (!dateTimeMap.has(person.dateTime)) dateTimeMap.set(person.dateTime, []);
       
       nameMap.get(normalizedName)?.push(person);
-      birthDateMap.get(person.birthDate)?.push(person.id);
-      documentMap.get(normalizedDoc)?.push(person.id);
+      enrollmentMap.get(normalizedEnrollment)?.push(person.id);
+      courseMap.get(normalizedCourse)?.push(person);
+      gradeMap.get(normalizedGrade)?.push(person);
+      dateTimeMap.get(person.dateTime)?.push(person.id);
     });
     
     // Estatísticas de duplicatas
     const duplicateNames = Array.from(nameMap.entries()).filter(([_, group]) => group.length > 1).length;
-    const duplicateDates = Array.from(birthDateMap.entries()).filter(([_, ids]) => ids.length > 1).length;
-    const duplicateDocs = Array.from(documentMap.entries()).filter(([_, ids]) => ids.length > 1).length;
+    const duplicateEnrollments = Array.from(enrollmentMap.entries()).filter(([_, ids]) => ids.length > 1).length;
+    const duplicateCourses = Array.from(courseMap.entries()).filter(([_, group]) => group.length > 1).length;
+    const duplicateGrades = Array.from(gradeMap.entries()).filter(([_, group]) => group.length > 1).length;
+    const duplicateDateTimes = Array.from(dateTimeMap.entries()).filter(([_, ids]) => ids.length > 1).length;
     
     return { 
-      duplicateMap: { nameMap, birthDateMap, documentMap },
-      summaryStats: { duplicateNames, duplicateDates, duplicateDocs }
+      duplicateMap: { nameMap, enrollmentMap, courseMap, gradeMap, dateTimeMap },
+      summaryStats: { 
+        duplicateNames, 
+        duplicateEnrollments, 
+        duplicateCourses, 
+        duplicateGrades, 
+        duplicateDateTimes 
+      }
     };
   }, [people]);
   
@@ -48,27 +64,37 @@ const PeopleTable: React.FC<PeopleTableProps> = ({ people, onDeletePerson }) => 
       const normalizedName = name.toLowerCase().trim().replace(/\s+/g, ' ');
       return (duplicateMap.nameMap.get(normalizedName)?.length || 0) > 1;
     },
-    birthDate: (date: string) => (duplicateMap.birthDateMap.get(date)?.length || 0) > 1,
-    document: (doc: string) => {
-      const normalizedDoc = doc.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
-      return (duplicateMap.documentMap.get(normalizedDoc)?.length || 0) > 1;
+    enrollment: (enrollment: string) => {
+      const normalizedEnrollment = enrollment.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+      return (duplicateMap.enrollmentMap.get(normalizedEnrollment)?.length || 0) > 1;
     },
+    course: (course: string) => {
+      const normalizedCourse = course.toLowerCase().trim().replace(/\s+/g, ' ');
+      return (duplicateMap.courseMap.get(normalizedCourse)?.length || 0) > 1;
+    },
+    grade: (grade: string) => {
+      const normalizedGrade = grade.toLowerCase().trim().replace(/\s+/g, ' ');
+      return (duplicateMap.gradeMap.get(normalizedGrade)?.length || 0) > 1;
+    },
+    dateTime: (dateTime: string) => (duplicateMap.dateTimeMap.get(dateTime)?.length || 0) > 1,
   };
   
-  // Formatar data para exibição
-  const formatDate = (dateString: string) => {
+  // Formatar data e hora para exibição
+  const formatDateTime = (dateTimeString: string) => {
     try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("pt-BR");
+      const dateTime = new Date(dateTimeString);
+      return dateTime.toLocaleString("pt-BR");
     } catch (e) {
-      return dateString;
+      return dateTimeString;
     }
   };
 
   // Verificar se existem duplicatas
   const hasDuplicates = summaryStats.duplicateNames > 0 || 
-                        summaryStats.duplicateDates > 0 || 
-                        summaryStats.duplicateDocs > 0;
+                        summaryStats.duplicateEnrollments > 0 || 
+                        summaryStats.duplicateCourses > 0 ||
+                        summaryStats.duplicateGrades > 0 ||
+                        summaryStats.duplicateDateTimes > 0;
 
   return (
     <div className="space-y-4">
@@ -79,8 +105,10 @@ const PeopleTable: React.FC<PeopleTableProps> = ({ people, onDeletePerson }) => 
             <p className="font-medium">Duplicatas encontradas:</p>
             <p className="text-muted-foreground">
               {summaryStats.duplicateNames > 0 && `${summaryStats.duplicateNames} nomes, `}
-              {summaryStats.duplicateDates > 0 && `${summaryStats.duplicateDates} datas, `}
-              {summaryStats.duplicateDocs > 0 && `${summaryStats.duplicateDocs} documentos`}
+              {summaryStats.duplicateEnrollments > 0 && `${summaryStats.duplicateEnrollments} matrículas, `}
+              {summaryStats.duplicateCourses > 0 && `${summaryStats.duplicateCourses} cursos, `}
+              {summaryStats.duplicateGrades > 0 && `${summaryStats.duplicateGrades} séries, `}
+              {summaryStats.duplicateDateTimes > 0 && `${summaryStats.duplicateDateTimes} datas/horas`}
             </p>
           </div>
         </div>
@@ -90,16 +118,18 @@ const PeopleTable: React.FC<PeopleTableProps> = ({ people, onDeletePerson }) => 
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Data de Nascimento</TableHead>
-              <TableHead>Número do Documento</TableHead>
+              <TableHead>Data e Hora</TableHead>
+              <TableHead>Nome Completo</TableHead>
+              <TableHead>Número de Matrícula</TableHead>
+              <TableHead>Curso</TableHead>
+              <TableHead>Série</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {people.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                   Cole dados acima para identificar duplicatas
                 </TableCell>
               </TableRow>
@@ -107,19 +137,29 @@ const PeopleTable: React.FC<PeopleTableProps> = ({ people, onDeletePerson }) => 
               people.map((person) => (
                 <TableRow key={person.id}>
                   <TableCell className={cn(
+                    isDuplicate.dateTime(person.dateTime) && "bg-duplicate font-medium"
+                  )}>
+                    {formatDateTime(person.dateTime)}
+                  </TableCell>
+                  <TableCell className={cn(
                     isDuplicate.name(person.name) && "bg-duplicate font-medium"
                   )}>
                     {person.name}
                   </TableCell>
                   <TableCell className={cn(
-                    isDuplicate.birthDate(person.birthDate) && "bg-duplicate font-medium"
+                    isDuplicate.enrollment(person.enrollmentNumber) && "bg-duplicate font-medium"
                   )}>
-                    {formatDate(person.birthDate)}
+                    {person.enrollmentNumber}
                   </TableCell>
                   <TableCell className={cn(
-                    isDuplicate.document(person.documentNumber) && "bg-duplicate font-medium"
+                    isDuplicate.course(person.course) && "bg-duplicate font-medium"
                   )}>
-                    {person.documentNumber}
+                    {person.course}
+                  </TableCell>
+                  <TableCell className={cn(
+                    isDuplicate.grade(person.grade) && "bg-duplicate font-medium"
+                  )}>
+                    {person.grade}
                   </TableCell>
                   <TableCell className="text-right">
                     <button
